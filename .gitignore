@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.DS_Store
+coverage/
+frontend/node_modules/
+frontend/dist/
+backend/node_modules/
+backend/dist/
+backend/uploads/
+prisma/dev.db
+*.log
+package-lock.json

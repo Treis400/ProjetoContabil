@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  passwordHash     String
+  role             UserRole          @default(EMPLOYEE)
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  alertsResolved   Alert[]           @relation("AlertResolvedBy")
+  auditLogs        AuditLog[]
+  createdClients   Client[]          @relation("ClientCreatedBy")
+  updatedClients   Client[]          @relation("ClientUpdatedBy")
+  clientChanges    ClientChangeLog[]
+  documents        Document[]
+  createdProcesses Process[]         @relation("ProcessCreatedBy")
+  responsibleFor   Process[]         @relation("ProcessResponsible")
+  updatedProcesses Process[]         @relation("ProcessUpdatedBy")
+  processMoves     ProcessMovement[]
+  stepsResponsible ProcessStep[]     @relation("StepResponsible")
+  taxReviews       TaxAnnualReview[]
+}
+
+model Client {
+  id                     String             @id @default(cuid())
+  companyName            String
+  tradeName              String?
+  cnpj                   String             @unique
+  stateRegistration      String?
+  municipalRegistration  String?
+  mainCnae               String?
+  taxRegime              String?
+  openingDate            DateTime?
+  companyStatus          CompanyStatus      @default(ATIVA)
+  legalRepresentative    String?
+  legalRepresentativeCpf String?
+  phone                  String?
+  whatsapp               String?
+  email                  String?
+  fullAddress            String?
+  internalNotes          String?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  createdById            String
+  updatedById            String
+  alerts                 Alert[]
+  createdBy              User               @relation("ClientCreatedBy", fields: [createdById], references: [id])
+  updatedBy              User               @relation("ClientUpdatedBy", fields: [updatedById], references: [id])
+  changeLogs             ClientChangeLog[]
+  monthlyFees            ClientMonthlyFee[]
+  services               ClientService[]
+  taxProfile             ClientTaxProfile?
+  documents              Document[]
+  processes              Process[]
+  taxReviews             TaxAnnualReview[]
+}
+
+model ClientTaxProfile {
+  id                       String           @id @default(cuid())
+  clientId                 String           @unique
+  companyType              CompanyType
+  cityHall                 String?
+  regulatoryAgency         String?
+  digitalCertificate       String?
+  digitalCertificateExpiry DateTime?
+  currentTaxSituation      TaxReviewStatus?
+  client                   Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ClientService {
+  id          String            @id @default(cuid())
+  clientId    String
+  serviceType ClientServiceType
+  description String?
+  createdAt   DateTime          @default(now())
+  client      Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model ClientMonthlyFee {
+  id          String                       @id @default(cuid())
+  clientId    String
+  amount      Decimal                      @db.Decimal(10, 2)
+  startDate   DateTime
+  status      ContractStatus               @default(ATIVO)
+  isCurrent   Boolean                      @default(true)
+  createdAt   DateTime                     @default(now())
+  client      Client                       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  adjustments ClientMonthlyFeeAdjustment[]
+}
+
+model ClientMonthlyFeeAdjustment {
+  id             String           @id @default(cuid())
+  monthlyFeeId   String
+  previousAmount Decimal          @db.Decimal(10, 2)
+  newAmount      Decimal          @db.Decimal(10, 2)
+  effectiveDate  DateTime
+  notes          String?
+  createdAt      DateTime         @default(now())
+  monthlyFee     ClientMonthlyFee @relation(fields: [monthlyFeeId], references: [id], onDelete: Cascade)
+}
+
+model ClientChangeLog {
+  id        String   @id @default(cuid())
+  clientId  String
+  userId    String
+  fieldName String
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model ProcessFlowTemplate {
+  id        String                @id @default(cuid())
+  name      String
+  type      ProcessType
+  isDefault Boolean               @default(false)
+  createdAt DateTime              @default(now())
+  processes Process[]
+  steps     ProcessStepTemplate[]
+}
+
+model ProcessStepTemplate {
+  id         String              @id @default(cuid())
+  templateId String
+  title      String
+  orderIndex Int
+  createdAt  DateTime            @default(now())
+  template   ProcessFlowTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+model Process {
+  id                   String                @id @default(cuid())
+  clientId             String
+  flowTemplateId       String?
+  title                String
+  description          String?
+  type                 ProcessType
+  status               ProcessStatus         @default(ESCRITORIO_EXECUTANDO)
+  priority             PriorityLevel         @default(MEDIA)
+  responsibleId        String?
+  dueDate              DateTime?
+  startedAt            DateTime              @default(now())
+  completedAt          DateTime?
+  notes                String?
+  closureEffectiveDate DateTime?
+  protocolNumber       String?
+  finalNotes           String?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  createdById          String
+  updatedById          String
+  alerts               Alert[]
+  documents            Document[]
+  client               Client                @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy            User                  @relation("ProcessCreatedBy", fields: [createdById], references: [id])
+  flowTemplate         ProcessFlowTemplate?  @relation(fields: [flowTemplateId], references: [id])
+  responsible          User?                 @relation("ProcessResponsible", fields: [responsibleId], references: [id])
+  updatedBy            User                  @relation("ProcessUpdatedBy", fields: [updatedById], references: [id])
+  fee                  ProcessFee?
+  movements            ProcessMovement[]
+  pendingIssues        ProcessPendingIssue[]
+  steps                ProcessStep[]
+}
+
+model ProcessStep {
+  id             String     @id @default(cuid())
+  processId      String
+  templateStepId String?
+  title          String
+  orderIndex     Int
+  status         StepStatus @default(PENDENTE)
+  responsibleId  String?
+  dueDate        DateTime?
+  completedAt    DateTime?
+  notes          String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  process        Process    @relation(fields: [processId], references: [id], onDelete: Cascade)
+  responsible    User?      @relation("StepResponsible", fields: [responsibleId], references: [id])
+}
+
+model ProcessMovement {
+  id             String         @id @default(cuid())
+  processId      String
+  userId         String
+  description    String
+  previousStatus ProcessStatus?
+  nextStatus     ProcessStatus?
+  createdAt      DateTime       @default(now())
+  process        Process        @relation(fields: [processId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id])
+}
+
+model ProcessPendingIssue {
+  id          String           @id @default(cuid())
+  processId   String
+  type        PendingIssueType
+  description String
+  resolved    Boolean          @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  process     Process          @relation(fields: [processId], references: [id], onDelete: Cascade)
+}
+
+model ProcessFee {
+  id                String               @id @default(cuid())
+  processId         String               @unique
+  totalAmount       Decimal              @db.Decimal(10, 2)
+  paymentMethod     PaymentMethod
+  installmentsCount Int                  @default(1)
+  paymentStatus     PaymentStatus        @default(PENDENTE)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  process           Process              @relation(fields: [processId], references: [id], onDelete: Cascade)
+  installments      ProcessInstallment[]
+}
+
+model ProcessInstallment {
+  id       String        @id @default(cuid())
+  feeId    String
+  sequence Int
+  dueDate  DateTime
+  amount   Decimal       @db.Decimal(10, 2)
+  status   PaymentStatus @default(PENDENTE)
+  paidAt   DateTime?
+  fee      ProcessFee    @relation(fields: [feeId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id           String             @id @default(cuid())
+  originalName String
+  fileName     String
+  storagePath  String
+  mimeType     String
+  size         Int
+  entityType   DocumentEntityType
+  clientId     String?
+  processId    String?
+  uploadedById String
+  createdAt    DateTime           @default(now())
+  client       Client?            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  process      Process?           @relation(fields: [processId], references: [id], onDelete: Cascade)
+  uploadedBy   User               @relation(fields: [uploadedById], references: [id])
+}
+
+model TaxAnnualReview {
+  id               String          @id @default(cuid())
+  clientId         String
+  year             Int
+  status           TaxReviewStatus
+  verificationDate DateTime
+  notes            String?
+  reviewedById     String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  client           Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  reviewedBy       User            @relation(fields: [reviewedById], references: [id])
+
+  @@unique([clientId, year])
+}
+
+model Alert {
+  id           String        @id @default(cuid())
+  type         AlertType
+  severity     AlertSeverity
+  title        String
+  description  String?
+  dueDate      DateTime?
+  resolved     Boolean       @default(false)
+  resolvedAt   DateTime?
+  resolvedById String?
+  clientId     String?
+  processId    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  process      Process?      @relation(fields: [processId], references: [id], onDelete: Cascade)
+  resolvedBy   User?         @relation("AlertResolvedBy", fields: [resolvedById], references: [id])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String
+  action    AuditAction
+  entity    String
+  entityId  String
+  summary   String
+  metadata  Json?
+  createdAt DateTime    @default(now())
+  user      User        @relation(fields: [userId], references: [id])
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+}
+
+enum CompanyType {
+  MEI
+  SIMPLES_NACIONAL
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+}
+
+enum CompanyStatus {
+  ATIVA
+  SUSPENSA
+  INATIVA
+  ENCERRADA
+}
+
+enum ClientServiceType {
+  CONTABILIDADE_REGULAR
+  MEI
+  FOLHA_DOMESTICA
+  ASSESSORIA
+  DEPARTAMENTO_PESSOAL
+  FISCAL
+  IMPOSTO_RENDA
+  ABERTURA_EMPRESA
+  ALTERACAO_CONTRATUAL
+  ENCERRAMENTO_EMPRESA
+  OUTROS
+}
+
+enum ContractStatus {
+  ATIVO
+  SUSPENSO
+  ENCERRADO
+}
+
+enum ProcessType {
+  ABERTURA_EMPRESA
+  ALTERACAO_EMPRESA
+  ENCERRAMENTO_EMPRESA
+  FISCAL
+  DP
+  IMPOSTO_RENDA
+  OUTRO
+}
+
+enum ProcessStatus {
+  ESCRITORIO_EXECUTANDO
+  PARADO_COM_CLIENTE
+  CONCLUIDO
+}
+
+enum StepStatus {
+  PENDENTE
+  EM_ANDAMENTO
+  AGUARDANDO_CLIENTE
+  CONCLUIDO
+}
+
+enum PriorityLevel {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum PendingIssueType {
+  DEBITO_TRIBUTARIO
+  OBRIGACAO_ACESSORIA_ATRASADA
+  FALTA_DOCUMENTO
+  PENDENCIA_MUNICIPAL
+  PENDENCIA_ESTADUAL
+  ORGAO_REGULADOR
+  OUTRA
+}
+
+enum PaymentMethod {
+  PIX
+  BOLETO
+  DINHEIRO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+  TRANSFERENCIA
+  OUTRO
+}
+
+enum PaymentStatus {
+  PENDENTE
+  PARCIAL
+  PAGO
+}
+
+enum DocumentEntityType {
+  CLIENT
+  PROCESS
+}
+
+enum TaxReviewStatus {
+  SIMPLES_NACIONAL_ATIVO
+  SIMPLES_NACIONAL_EXCLUIDO
+  MEI_ATIVO
+  MEI_DESENQUADRADO
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+}
+
+enum AlertType {
+  PROCESSO_PROXIMO_VENCIMENTO
+  PROCESSO_ATRASADO
+  ENCERRAMENTO_AGUARDANDO_CLIENTE
+  PENDENCIA_FISCAL
+  ASSINATURA_PENDENTE
+  CERTIDAO_VENCIDA
+  REVISAO_TRIBUTARIA_PENDENTE
+  CERTIFICADO_DIGITAL_PROXIMO_VENCIMENTO
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  STATUS_CHANGE
+  LOGIN
+  UPLOAD
+}
