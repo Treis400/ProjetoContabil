@@ -177,7 +177,12 @@ export function ProcessFormPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Dados principais</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <FormField label="Cliente">
+            <FormField
+              label="Cliente"
+              required
+              tooltip="Campo obrigatorio para vincular o processo a um cliente."
+              description="Selecione a empresa para a qual este processo sera executado."
+            >
               <select
                 className={inputClass}
                 value={form.clientId}
@@ -191,14 +196,24 @@ export function ProcessFormPage() {
                 ))}
               </select>
             </FormField>
-            <FormField label="Titulo">
+            <FormField
+              label="Titulo"
+              required
+              tooltip="Campo obrigatorio para identificar rapidamente o processo."
+              description="Use um titulo curto e objetivo que facilite a busca e a leitura."
+            >
               <input
                 className={inputClass}
                 value={form.title}
                 onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
               />
             </FormField>
-            <FormField label="Tipo de processo">
+            <FormField
+              label="Tipo de processo"
+              required
+              tooltip="Campo obrigatorio para classificar o servico prestado."
+              description="Escolha a natureza do processo, como abertura, alteracao ou fiscal."
+            >
               <select
                 className={inputClass}
                 value={form.type}
@@ -218,7 +233,12 @@ export function ProcessFormPage() {
                 <option value="OUTRO">Outro</option>
               </select>
             </FormField>
-            <FormField label="Status">
+            <FormField
+              label="Status"
+              required
+              tooltip="Campo obrigatorio para mostrar o andamento atual do processo."
+              description="Indique se o escritorio esta executando, aguardando cliente ou concluiu."
+            >
               <select
                 className={inputClass}
                 value={form.status}
@@ -234,7 +254,12 @@ export function ProcessFormPage() {
                 <option value="CONCLUIDO">Concluido</option>
               </select>
             </FormField>
-            <FormField label="Prioridade">
+            <FormField
+              label="Prioridade"
+              required
+              tooltip="Campo obrigatorio para ajudar na organizacao da fila de trabalho."
+              description="Defina o nivel de urgencia para orientar o acompanhamento interno."
+            >
               <select
                 className={inputClass}
                 value={form.priority}
@@ -279,7 +304,11 @@ export function ProcessFormPage() {
               />
             </FormField>
             <div className="md:col-span-2 xl:col-span-3">
-              <FormField label="Descricao / observacoes">
+            <FormField
+              label="Descricao / observacoes"
+              tooltip="Use este campo para complementar o contexto do processo."
+              description="Descreva detalhes importantes, combinados com o cliente ou pontos de atencao."
+            >
                 <textarea
                   className={inputClass}
                   rows={4}
@@ -294,7 +323,11 @@ export function ProcessFormPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Honorarios do servico pontual</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <FormField label="Valor">
+            <FormField
+              label="Valor"
+              tooltip="Registre o valor total cobrado pelo servico pontual."
+              description="Informe o montante total antes da distribuicao em parcelas."
+            >
               <input
                 type="number"
                 step="0.01"
@@ -317,7 +350,11 @@ export function ProcessFormPage() {
                 }
               />
             </FormField>
-            <FormField label="Forma de pagamento">
+            <FormField
+              label="Forma de pagamento"
+              tooltip="Ajuda a registrar como o cliente combinou o pagamento."
+              description="Selecione o meio de pagamento principal acordado para este servico."
+            >
               <select
                 className={inputClass}
                 value={form.fee?.paymentMethod ?? 'PIX'}
@@ -342,7 +379,11 @@ export function ProcessFormPage() {
                 <option value="OUTRO">Outro</option>
               </select>
             </FormField>
-            <FormField label="Quantidade de parcelas">
+            <FormField
+              label="Quantidade de parcelas"
+              tooltip="Controla em quantas cobrancas o valor sera dividido."
+              description="Ao alterar este campo, o sistema recalcula automaticamente as parcelas."
+            >
               <input
                 type="number"
                 min={1}
@@ -365,7 +406,11 @@ export function ProcessFormPage() {
                 }
               />
             </FormField>
-            <FormField label="Status do pagamento">
+            <FormField
+              label="Status do pagamento"
+              tooltip="Mostra a situacao financeira atual do servico."
+              description="Use para indicar se o valor esta pendente, parcial ou totalmente pago."
+            >
               <select
                 className={inputClass}
                 value={form.fee?.paymentStatus ?? 'PENDENTE'}
@@ -392,7 +437,11 @@ export function ProcessFormPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Pendencias e encerramento</h3>
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <FormField label="Pendencias (uma por linha no formato TIPO:Descricao)">
+            <FormField
+              label="Pendencias (uma por linha no formato TIPO:Descricao)"
+              tooltip="Permite registrar bloqueios ou itens faltantes do processo."
+              description="Exemplo: FALTA_DOCUMENTO:Cliente nao enviou o contrato assinado."
+            >
               <textarea
                 className={inputClass}
                 rows={8}

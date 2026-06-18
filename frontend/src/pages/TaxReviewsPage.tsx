@@ -47,7 +47,12 @@ export function TaxReviewsPage() {
 
       <form onSubmit={handleSubmit} className="mb-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <FormField label="Cliente">
+          <FormField
+            label="Cliente"
+            required
+            tooltip="Campo obrigatorio para indicar qual empresa esta sendo revisada."
+            description="Selecione o cliente que recebera o registro da revisao tributaria."
+          >
             <select
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
               value={form.clientId}
@@ -61,7 +66,12 @@ export function TaxReviewsPage() {
               ))}
             </select>
           </FormField>
-          <FormField label="Ano">
+          <FormField
+            label="Ano"
+            required
+            tooltip="Campo obrigatorio para definir o exercicio analisado."
+            description="Informe o ano-base da revisao tributaria."
+          >
             <input
               type="number"
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
@@ -69,7 +79,12 @@ export function TaxReviewsPage() {
               onChange={(event) => setForm((current) => ({ ...current, year: Number(event.target.value) }))}
             />
           </FormField>
-          <FormField label="Situacao">
+          <FormField
+            label="Situacao"
+            required
+            tooltip="Campo obrigatorio para registrar o resultado da analise tributaria."
+            description="Escolha o enquadramento tributario identificado na revisao."
+          >
             <select
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"
               value={form.status}
@@ -83,7 +98,12 @@ export function TaxReviewsPage() {
               <option value="LUCRO_REAL">Lucro Real</option>
             </select>
           </FormField>
-          <FormField label="Data da verificacao">
+          <FormField
+            label="Data da verificacao"
+            required
+            tooltip="Campo obrigatorio para documentar quando a revisao foi realizada."
+            description="Selecione a data em que a conferencia tributaria aconteceu."
+          >
             <input
               type="date"
               className="w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400"

@@ -111,6 +111,15 @@ export async function getClientById(id: string) {
 }
 
 export async function createClient(data: ClientInput, userId: string) {
+  const existingClient = await prisma.client.findUnique({
+    where: { cnpj: data.cnpj },
+    select: { id: true },
+  });
+
+  if (existingClient) {
+    throw new AppError('Ja existe um cliente cadastrado com este CNPJ.', 409);
+  }
+
   const client = await prisma.client.create({
     data: {
       companyName: data.companyName,
@@ -180,6 +189,14 @@ export async function createClient(data: ClientInput, userId: string) {
 
 export async function updateClient(id: string, data: ClientInput, userId: string) {
   const existing = await getClientById(id);
+  const duplicatedClient = await prisma.client.findUnique({
+    where: { cnpj: data.cnpj },
+    select: { id: true },
+  });
+
+  if (duplicatedClient && duplicatedClient.id !== id) {
+    throw new AppError('Ja existe um cliente cadastrado com este CNPJ.', 409);
+  }
 
   const currentMonthlyFee = existing.monthlyFees.find((fee) => fee.isCurrent);
 

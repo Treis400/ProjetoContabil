@@ -28,6 +28,15 @@ model User {
   processMoves     ProcessMovement[]
   stepsResponsible ProcessStep[]     @relation("StepResponsible")
   taxReviews       TaxAnnualReview[]
+  fiscalDocuments  FiscalDocument[]   @relation("FiscalDocCreatedBy")
+  taxApurations    TaxApuration[]     @relation("ApurationCreatedBy")
+  fiscalObligations FiscalObligation[] @relation("ObligationCreatedBy")
+  fiscalBooks      FiscalBook[]       @relation("BookCreatedBy")
+  accountingEntries AccountingEntry[] @relation("EntryCreatedBy")
+  lalurPeriodsLocked LalurPeriod[]   @relation("LalurPeriodLockedBy")
+  lalurPartBMovements LalurPartBMovement[] @relation("LalurPartBMovCreatedBy")
+  lalurImports     LalurAccountingImport[] @relation("LalurImportedBy")
+  lalurAuditLogs   LalurAuditLog[]  @relation("LalurAuditLogUser")
 }
 
 model Client {
@@ -62,18 +71,423 @@ model Client {
   documents              Document[]
   processes              Process[]
   taxReviews             TaxAnnualReview[]
+  fiscalProducts         FiscalProduct[]
+  fiscalServices         FiscalService[]
+  operationNatures       OperationNature[]
+  fiscalDocuments        FiscalDocument[]
+  taxApurations          TaxApuration[]
+  fiscalObligations      FiscalObligation[]
+  fiscalBooks            FiscalBook[]
+  accountingPlans        AccountingPlan[]
+  costCenters            CostCenter[]
+  standardHistories      StandardHistory[]
+  entryTypes             EntryType[]
+  accountingParameters   AccountingParameters?
+  accountingEntries      AccountingEntry[]
+  periodClosings         PeriodClosing[]
+  lalurAdjustTypes       LalurAdjustType[]
+  lalurPeriods           LalurPeriod[]
+  lalurAccountingRules   LalurAccountingRule[]
+  lalurCompensations     LalurCompensation[]
+  lalurAccountingImports LalurAccountingImport[]
+  lalurAuditLogs         LalurAuditLog[]
+  ecfFiles               EcfFile[]
+  patrimonyGroups        PatrimonyGroup[]
+  patrimonyLocations     PatrimonyLocation[]
+  patrimonyResponsibles  PatrimonyResponsible[]
+  patrimonyAssets        PatrimonyAsset[]
+  patrimonyInventories   PatrimonyInventory[]
 }
 
 model ClientTaxProfile {
-  id                       String           @id @default(cuid())
-  clientId                 String           @unique
+  id                       String            @id @default(cuid())
+  clientId                 String            @unique
   companyType              CompanyType
   cityHall                 String?
   regulatoryAgency         String?
   digitalCertificate       String?
   digitalCertificateExpiry DateTime?
   currentTaxSituation      TaxReviewStatus?
-  client                   Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  // ICMS
+  icmsApurationType        IcmsApurationType?
+  icmsHasSt                Boolean           @default(false)
+  icmsHasDifal             Boolean           @default(false)
+  icmsHasPartilha          Boolean           @default(false)
+
+  // IPI
+  ipiContributor           Boolean           @default(false)
+
+  // PIS/COFINS
+  pisCofinsRegime          PisCofinsRegime?
+
+  // ISS
+  issMainMunicipality      String?
+  issHasRetention          Boolean           @default(false)
+
+  // SPED
+  spedFiscalPeriod         SpedPeriod?
+  spedContribPeriod        SpedPeriod?
+
+  // Certificado digital
+  certificateType          CertificateType?
+  certificateResponsible   String?
+
+  client                   Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model FiscalProduct {
+  id                       String    @id @default(cuid())
+  clientId                 String
+  internalCode             String
+  description              String
+  unitOfMeasure            String
+  barcode                  String?
+  ncm                      String
+  cest                     String?
+  group                    String?
+  subgroup                 String?
+
+  cfopInbound              String?
+  cfopOutbound             String?
+
+  cstIcms                  String?
+  csosnIcms                String?
+  cstIpi                   String?
+  cstPisCofins             String?
+
+  icmsInternalRate         Decimal?  @db.Decimal(7, 4)
+  icmsInterstateRate       Decimal?  @db.Decimal(7, 4)
+  icmsStRate               Decimal?  @db.Decimal(7, 4)
+  ipiRate                  Decimal?  @db.Decimal(7, 4)
+  pisRate                  Decimal?  @db.Decimal(7, 4)
+  cofinsRate               Decimal?  @db.Decimal(7, 4)
+
+  generatesPisCofinsCredit Boolean   @default(false)
+  isMonophasic             Boolean   @default(false)
+  isSubjectToSt            Boolean   @default(false)
+  generatesDifal           Boolean   @default(false)
+  isImported               Boolean   @default(false)
+  isFuel                   Boolean   @default(false)
+  isEnergy                 Boolean   @default(false)
+  isCommunication          Boolean   @default(false)
+  isTransport              Boolean   @default(false)
+  isForConsumption         Boolean   @default(false)
+  isForResale              Boolean   @default(false)
+  isFixedAsset             Boolean   @default(false)
+
+  active                   Boolean   @default(true)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  client                   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, internalCode])
+}
+
+model FiscalService {
+  id                       String    @id @default(cuid())
+  clientId                 String
+  internalCode             String
+  description              String
+  municipalCode            String?
+  lc116Code                String?
+
+  issRate                  Decimal?  @db.Decimal(7, 4)
+  issOwnRule               Boolean   @default(false)
+  issRetainedRule          Boolean   @default(false)
+  issSubstituteRule        Boolean   @default(false)
+
+  hasInssRetention         Boolean   @default(false)
+  hasIrrfRetention         Boolean   @default(false)
+  hasCsllRetention         Boolean   @default(false)
+  hasPisRetention          Boolean   @default(false)
+  hasCofinsRetention       Boolean   @default(false)
+
+  isServiceExport          Boolean   @default(false)
+  incidenceMunicipality    IssIncidenceMunicipality?
+
+  active                   Boolean   @default(true)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  client                   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, internalCode])
+}
+
+model CfopTable {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  description   String
+  operationType CfopOperationType
+  creditImpact  String?
+  active        Boolean  @default(true)
+}
+
+model CstTable {
+  id          String      @id @default(cuid())
+  code        String
+  description String
+  taxType     CstTaxType
+  entryExit   CstEntryExit?
+  active      Boolean     @default(true)
+
+  @@unique([code, taxType])
+}
+
+model NcmTable {
+  code        String    @id
+  description String
+  validFrom   DateTime?
+  validUntil  DateTime?
+}
+
+model CestTable {
+  code        String    @id
+  ncm         String
+  description String
+  validFrom   DateTime?
+  validUntil  DateTime?
+}
+
+model TaxApuration {
+  id              String           @id @default(cuid())
+  clientId        String
+  taxType         TaxApurationType
+  periodMonth     Int
+  periodYear      Int
+  status          ApurationStatus  @default(ABERTA)
+  notes           String?
+  calculatedAt    DateTime?
+  closedAt        DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  createdById     String?
+
+  client          Client                       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy       User?                        @relation("ApurationCreatedBy", fields: [createdById], references: [id])
+  adjustments     TaxApurationAdjustment[]
+  result          TaxApurationResult?
+  simplesRevenues TaxApurationSimplesRevenue[]
+
+  @@unique([clientId, taxType, periodMonth, periodYear])
+  @@index([clientId, periodYear, periodMonth])
+}
+
+model TaxApurationAdjustment {
+  id           String         @id @default(cuid())
+  apurationId  String
+  type         AdjustmentType
+  description  String
+  value        Decimal        @db.Decimal(14, 2)
+  createdAt    DateTime       @default(now())
+
+  apuration    TaxApuration   @relation(fields: [apurationId], references: [id], onDelete: Cascade)
+}
+
+model TaxApurationResult {
+  id              String       @id @default(cuid())
+  apurationId     String       @unique
+
+  // ICMS / IPI (débitos, créditos, ST, DIFAL, ajustes, saldo)
+  totalDebits     Decimal      @default(0) @db.Decimal(14, 2)
+  totalCredits    Decimal      @default(0) @db.Decimal(14, 2)
+  totalStDebits   Decimal      @default(0) @db.Decimal(14, 2)
+  totalStCredits  Decimal      @default(0) @db.Decimal(14, 2)
+  totalDifal      Decimal      @default(0) @db.Decimal(14, 2)
+  totalPartilha   Decimal      @default(0) @db.Decimal(14, 2)
+  totalAdjustments Decimal     @default(0) @db.Decimal(14, 2)
+  previousBalance Decimal      @default(0) @db.Decimal(14, 2)
+  balance         Decimal      @default(0) @db.Decimal(14, 2)
+  taxDue          Decimal      @default(0) @db.Decimal(14, 2)
+  nextBalance     Decimal      @default(0) @db.Decimal(14, 2)
+
+  // PIS / COFINS
+  pisRevenue      Decimal      @default(0) @db.Decimal(14, 2)
+  pisDebits       Decimal      @default(0) @db.Decimal(14, 2)
+  pisCredits      Decimal      @default(0) @db.Decimal(14, 2)
+  pisNet          Decimal      @default(0) @db.Decimal(14, 2)
+  cofinsRevenue   Decimal      @default(0) @db.Decimal(14, 2)
+  cofinsDebits    Decimal      @default(0) @db.Decimal(14, 2)
+  cofinsCredits   Decimal      @default(0) @db.Decimal(14, 2)
+  cofinsNet       Decimal      @default(0) @db.Decimal(14, 2)
+
+  // ISS
+  issOwn          Decimal      @default(0) @db.Decimal(14, 2)
+  issRetained     Decimal      @default(0) @db.Decimal(14, 2)
+  issSubstitute   Decimal      @default(0) @db.Decimal(14, 2)
+  issNet          Decimal      @default(0) @db.Decimal(14, 2)
+
+  // Simples Nacional
+  simplesRbcTotal Decimal      @default(0) @db.Decimal(14, 2)
+  simplesRbcAcum  Decimal      @default(0) @db.Decimal(14, 2)
+  simplesAliquota Decimal      @default(0) @db.Decimal(7, 4)
+  simplesTotalDue Decimal      @default(0) @db.Decimal(14, 2)
+
+  calculatedAt    DateTime     @default(now())
+
+  apuration       TaxApuration @relation(fields: [apurationId], references: [id], onDelete: Cascade)
+}
+
+model TaxApurationSimplesRevenue {
+  id                  String       @id @default(cuid())
+  apurationId         String
+  annex               String
+  totalRevenue        Decimal      @default(0) @db.Decimal(14, 2)
+  revenueWithSt       Decimal      @default(0) @db.Decimal(14, 2)
+  revenueMonophasic   Decimal      @default(0) @db.Decimal(14, 2)
+  revenueIssRetained  Decimal      @default(0) @db.Decimal(14, 2)
+  netRevenue          Decimal      @default(0) @db.Decimal(14, 2)
+
+  apuration           TaxApuration @relation(fields: [apurationId], references: [id], onDelete: Cascade)
+
+  @@unique([apurationId, annex])
+}
+
+model OperationNature {
+  id          String   @id @default(cuid())
+  clientId    String?
+  code        String
+  description String
+  cfop        String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  client      Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+model FiscalDocument {
+  id                   String               @id @default(cuid())
+  clientId             String
+  documentType         FiscalDocumentType
+  entryExit            FiscalEntryExit
+  status               FiscalDocumentStatus @default(REGULAR)
+  origin               FiscalDocumentOrigin @default(DIGITACAO_MANUAL)
+
+  // Identificação
+  documentNumber       String
+  series               String?
+  accessKey            String?              @unique
+  issueDate            DateTime
+  entryExitDate        DateTime?
+
+  // Emitente
+  cnpjIssuer           String
+  nameIssuer           String
+  stateRegIssuer       String?
+  ufIssuer             String?
+
+  // Destinatário
+  cnpjRecipient        String?
+  nameRecipient        String?
+  stateRegRecipient    String?
+  ufRecipient          String?
+
+  // Totais
+  totalProducts        Decimal              @default(0) @db.Decimal(14, 2)
+  totalDocument        Decimal              @default(0) @db.Decimal(14, 2)
+  totalFreight         Decimal              @default(0) @db.Decimal(14, 2)
+  totalInsurance       Decimal              @default(0) @db.Decimal(14, 2)
+  totalDiscount        Decimal              @default(0) @db.Decimal(14, 2)
+  totalOther           Decimal              @default(0) @db.Decimal(14, 2)
+
+  // ICMS
+  baseIcms             Decimal              @default(0) @db.Decimal(14, 2)
+  valueIcms            Decimal              @default(0) @db.Decimal(14, 2)
+  baseIcmsSt           Decimal              @default(0) @db.Decimal(14, 2)
+  valueIcmsSt          Decimal              @default(0) @db.Decimal(14, 2)
+
+  // IPI
+  valueIpi             Decimal              @default(0) @db.Decimal(14, 2)
+
+  // PIS / COFINS
+  valuePis             Decimal              @default(0) @db.Decimal(14, 2)
+  valueCofins          Decimal              @default(0) @db.Decimal(14, 2)
+
+  // ISS (NFS-e)
+  baseIss              Decimal              @default(0) @db.Decimal(14, 2)
+  valueIss             Decimal              @default(0) @db.Decimal(14, 2)
+  valueIssRetained     Decimal              @default(0) @db.Decimal(14, 2)
+
+  // Retenções
+  valueInss            Decimal              @default(0) @db.Decimal(14, 2)
+  valueIrrf            Decimal              @default(0) @db.Decimal(14, 2)
+  valueCsll            Decimal              @default(0) @db.Decimal(14, 2)
+
+  // XML original
+  xmlContent           String?
+
+  // Validação
+  validationStatus     ValidationStatus     @default(PENDENTE)
+  validationErrors     Json?
+
+  notes                String?
+  periodMonth          Int?
+  periodYear           Int?
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  createdById          String?
+
+  client               Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy            User?                @relation("FiscalDocCreatedBy", fields: [createdById], references: [id])
+  items                FiscalDocumentItem[]
+
+  @@index([clientId, periodYear, periodMonth])
+  @@index([clientId, entryExit])
+  @@index([accessKey])
+}
+
+model FiscalDocumentItem {
+  id              String          @id @default(cuid())
+  documentId      String
+  itemNumber      Int
+  productCode     String?
+  description     String
+  ncm             String?
+  cfop            String
+  unitOfMeasure   String?
+
+  quantity        Decimal         @db.Decimal(14, 4)
+  unitValue       Decimal         @db.Decimal(14, 4)
+  totalValue      Decimal         @db.Decimal(14, 2)
+  discount        Decimal         @default(0) @db.Decimal(14, 2)
+
+  // CST / CSOSN
+  cstIcms         String?
+  csosnIcms       String?
+  cstIpi          String?
+  cstPisCofins    String?
+
+  // ICMS
+  baseIcms        Decimal         @default(0) @db.Decimal(14, 2)
+  icmsRate        Decimal         @default(0) @db.Decimal(7, 4)
+  valueIcms       Decimal         @default(0) @db.Decimal(14, 2)
+
+  // ICMS ST
+  baseIcmsSt      Decimal         @default(0) @db.Decimal(14, 2)
+  icmsStRate      Decimal         @default(0) @db.Decimal(7, 4)
+  valueIcmsSt     Decimal         @default(0) @db.Decimal(14, 2)
+
+  // IPI
+  ipiRate         Decimal         @default(0) @db.Decimal(7, 4)
+  valueIpi        Decimal         @default(0) @db.Decimal(14, 2)
+
+  // PIS
+  pisRate         Decimal         @default(0) @db.Decimal(7, 4)
+  valuePis        Decimal         @default(0) @db.Decimal(14, 2)
+
+  // COFINS
+  cofinsRate      Decimal         @default(0) @db.Decimal(7, 4)
+  valueCofins     Decimal         @default(0) @db.Decimal(14, 2)
+
+  // Crédito PIS/COFINS
+  allowsCredit    Boolean         @default(false)
+
+  document        FiscalDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
 }
 
 model ClientService {
@@ -434,4 +848,1021 @@ enum AuditAction {
   STATUS_CHANGE
   LOGIN
   UPLOAD
+}
+
+enum IcmsApurationType {
+  MENSAL
+  ESPECIAL
+}
+
+enum PisCofinsRegime {
+  CUMULATIVO
+  NAO_CUMULATIVO
+  MISTO
+}
+
+enum SpedPeriod {
+  MENSAL
+  ANUAL
+}
+
+enum CertificateType {
+  A1
+  A3
+}
+
+enum IssIncidenceMunicipality {
+  PRESTADOR
+  TOMADOR
+}
+
+enum CfopOperationType {
+  ENTRADA
+  SAIDA
+}
+
+enum CstTaxType {
+  ICMS
+  IPI
+  PIS_COFINS
+  CSOSN
+}
+
+enum CstEntryExit {
+  ENTRADA
+  SAIDA
+  AMBOS
+}
+
+enum FiscalDocumentType {
+  NF_E
+  NFC_E
+  CT_E
+  NFS_E
+  PRODUTOR
+  ENERGIA
+  TELECOM
+  COMBUSTIVEL
+  OUTRO
+}
+
+enum FiscalDocumentStatus {
+  REGULAR
+  CANCELADA
+  INUTILIZADA
+  DENEGADA
+}
+
+enum FiscalEntryExit {
+  ENTRADA
+  SAIDA
+}
+
+enum FiscalDocumentOrigin {
+  XML_IMPORTADO
+  DIGITACAO_MANUAL
+  IMPORTACAO_AUTOMATICA
+}
+
+enum ValidationStatus {
+  PENDENTE
+  VALIDO
+  DIVERGENTE
+  ERRO
+}
+
+enum TaxApurationType {
+  ICMS
+  IPI
+  PIS_COFINS
+  ISS
+  SIMPLES_NACIONAL
+}
+
+enum ApurationStatus {
+  ABERTA
+  CALCULADA
+  ENCERRADA
+}
+
+enum AdjustmentType {
+  ESTORNO_CREDITO
+  ESTORNO_DEBITO
+  OUTROS_CREDITOS
+  OUTROS_DEBITOS
+  INCENTIVO_FISCAL
+  DEDUCAO
+}
+
+// ── Patrimônio ────────────────────────────────────────────────────────────────
+
+enum PatrimonyAssetStatus {
+  ATIVO
+  EM_MANUTENCAO
+  OCIOSO
+  ARRENDADO
+  CEDIDO
+  BAIXADO
+}
+
+enum PatrimonyDeprecMethod {
+  LINEAR
+  SOMA_DIGITOS
+  UNIDADES_PRODUZIDAS
+  HORAS_TRABALHADAS
+}
+
+enum PatrimonyAcquisitionType {
+  COMPRA
+  DOACAO
+  TRANSFERENCIA
+  CONSTRUCAO_PROPRIA
+}
+
+enum PatrimonyMovementType {
+  TRANSFERENCIA_LOCAL
+  TRANSFERENCIA_RESPONSAVEL
+  TRANSFERENCIA_EMPRESA
+  MUDANCA_STATUS
+}
+
+enum PatrimonyDisposalType {
+  VENDA
+  SUCATEAMENTO
+  PERDA_ROUBO
+  DOACAO
+  TRANSFERENCIA
+  OBSOLESCENCIA
+}
+
+enum PatrimonyRevaluationType {
+  REAVALIACAO
+  IMPAIRMENT
+  REVERSAO_IMPAIRMENT
+}
+
+enum PatrimonyInventoryStatus {
+  ABERTO
+  EM_ANDAMENTO
+  CONCLUIDO
+}
+
+// ── LALUR/LACS ────────────────────────────────────────────────────────────────
+
+enum LalurAdjustNature {
+  ADICAO
+  EXCLUSAO
+  COMPENSACAO
+}
+
+enum LalurAdjustTiming {
+  PERMANENTE
+  TEMPORARIA
+}
+
+enum LalurPartBType {
+  DEDUCAO_FUTURA
+  TRIBUTACAO_FUTURA
+}
+
+enum LalurPartBControlType {
+  PREJUIZO_FISCAL
+  BASE_NEGATIVA_CSLL
+  AJUSTE_TEMPORARIO
+  INCENTIVO_FISCAL
+  DEPRECIACAO_ACELERADA
+  AMORTIZACAO_DIFERIDA
+  JCP_DIFERIDO
+  EQUIVALENCIA_PATRIMONIAL
+  PERDA_RECUPERAVEL
+}
+
+enum LalurPartBMovType {
+  INCLUSAO
+  UTILIZACAO
+  BAIXA
+  TRANSFERENCIA
+}
+
+enum LalurAuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOCK
+  UNLOCK
+  IMPORT
+}
+
+enum IrpjCsllCalcStatus {
+  RASCUNHO
+  CALCULADO
+  ENCERRADO
+}
+
+enum EcfStatus {
+  PENDENTE
+  GERADA
+  TRANSMITIDA
+  ERRO
+}
+
+enum TaxRegimeCalc {
+  LUCRO_REAL
+  LUCRO_PRESUMIDO
+}
+
+// ── Encerramento ──────────────────────────────────────────────────────────────
+
+enum PeriodClosingStatus {
+  ABERTO
+  FECHADO
+}
+
+// ── Fase 4 ─────────────────────────────────────────────────────────────────
+
+enum ObligationType {
+  SPED_FISCAL
+  SPED_CONTRIBUICOES
+  REINF
+  DCTF
+  PGDAS
+  DAS
+  DIRF
+  NFSE_MUNICIPAL
+  OUTRA
+}
+
+enum ObligationStatus {
+  PENDENTE
+  GERADA
+  TRANSMITIDA
+  ERRO
+  DISPENSADA
+}
+
+enum BookType {
+  ENTRADAS
+  SAIDAS
+  APURACAO_ICMS
+  APURACAO_IPI
+  APURACAO_PIS_COFINS
+  APURACAO_ISS
+}
+
+model FiscalObligation {
+  id           String            @id @default(cuid())
+  clientId     String
+  type         ObligationType
+  periodMonth  Int
+  periodYear   Int
+  dueDate      DateTime?
+  status       ObligationStatus  @default(PENDENTE)
+  notes        String?
+  fileContent  String?           @db.Text
+  fileName     String?
+  errorMessage String?
+  generatedAt  DateTime?
+  transmittedAt DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  createdById  String?
+  client       Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy    User?             @relation("ObligationCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([clientId, type, periodMonth, periodYear])
+  @@index([clientId, periodYear, periodMonth])
+}
+
+model FiscalBook {
+  id             String    @id @default(cuid())
+  clientId       String
+  bookType       BookType
+  periodMonth    Int
+  periodYear     Int
+  generatedAt    DateTime  @default(now())
+  totalEntries   Int       @default(0)
+  totalSaidas    Int       @default(0)
+  totalValueEntries Decimal @default(0) @db.Decimal(14, 2)
+  totalValueSaidas  Decimal @default(0) @db.Decimal(14, 2)
+  totalIcms      Decimal   @default(0) @db.Decimal(14, 2)
+  totalIpi       Decimal   @default(0) @db.Decimal(14, 2)
+  totalPis       Decimal   @default(0) @db.Decimal(14, 2)
+  totalCofins    Decimal   @default(0) @db.Decimal(14, 2)
+  totalIss       Decimal   @default(0) @db.Decimal(14, 2)
+  fileContent    String?   @db.Text
+  createdAt      DateTime  @default(now())
+  createdById    String?
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy      User?     @relation("BookCreatedBy", fields: [createdById], references: [id])
+
+  @@index([clientId, periodYear, periodMonth])
+}
+
+// ── Módulo Contábil ────────────────────────────────────────────────────────
+
+enum AccountType {
+  SINTETICA
+  ANALITICA
+}
+
+enum AccountNature {
+  DEVEDORA
+  CREDORA
+}
+
+enum AccountClass {
+  ATIVO
+  PASSIVO
+  PATRIMONIO_LIQUIDO
+  RECEITA
+  DESPESA
+  CUSTO
+  RESULTADO
+}
+
+enum CostCenterType {
+  ADMINISTRATIVO
+  OPERACIONAL
+  PROJETO
+  UNIDADE
+}
+
+enum EntryTypeClass {
+  NORMAL
+  PROVISAO
+  RECLASSIFICACAO
+  ENCERRAMENTO
+  AJUSTE
+}
+
+enum ClosingMethod {
+  AUTOMATICO
+  MANUAL
+}
+
+model AccountingPlan {
+  id                   String           @id @default(cuid())
+  clientId             String
+  code                 String
+  name                 String
+  type                 AccountType      @default(ANALITICA)
+  nature               AccountNature
+  classification       AccountClass
+  level                Int              @default(1)
+  parentId             String?
+  allowsEntry          Boolean          @default(true)
+  usesCostCenter       Boolean          @default(false)
+  usesStdHistory       Boolean          @default(false)
+  integratesModules    Boolean          @default(false)
+  spedRefCode          String?
+  ecfRefCode           String?
+  notes                String?
+  active               Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  client               Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  parent               AccountingPlan?  @relation("AccountParent", fields: [parentId], references: [id])
+  children             AccountingPlan[] @relation("AccountParent")
+
+  @@unique([clientId, code])
+  @@index([clientId, level])
+  @@index([clientId, classification])
+}
+
+model CostCenter {
+  id        String         @id @default(cuid())
+  clientId  String
+  code      String
+  name      String
+  type      CostCenterType @default(OPERACIONAL)
+  level     Int            @default(1)
+  parentId  String?
+  required  Boolean        @default(false)
+  active    Boolean        @default(true)
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  client    Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  parent    CostCenter?    @relation("CostCenterParent", fields: [parentId], references: [id])
+  children  CostCenter[]   @relation("CostCenterParent")
+
+  @@unique([clientId, code])
+  @@index([clientId, level])
+}
+
+model StandardHistory {
+  id         String   @id @default(cuid())
+  clientId   String
+  code       String
+  text       String
+  complement String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, code])
+}
+
+model EntryType {
+  id               String         @id @default(cuid())
+  clientId         String
+  code             String
+  name             String
+  classification   EntryTypeClass @default(NORMAL)
+  appearsInReports Boolean        @default(true)
+  allowsReversal   Boolean        @default(true)
+  active           Boolean        @default(true)
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  client           Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, code])
+}
+
+model AccountingParameters {
+  id                    String        @id @default(cuid())
+  clientId              String        @unique
+  closingMethod         ClosingMethod @default(AUTOMATICO)
+  costCenterRequired    Boolean       @default(false)
+  integrateFiscal       Boolean       @default(true)
+  integratePayroll      Boolean       @default(false)
+  integrateFinancial    Boolean       @default(false)
+  integratePatrimony    Boolean       @default(false)
+  integrateBilling      Boolean       @default(false)
+  closedPeriods         String[]      @default([])
+  currentYear           Int?
+  resultAccountId       String?
+  retainedEarningsAccId String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  client                Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+}
+
+// ── Lançamentos Contábeis ─────────────────────────────────────────────────────
+
+enum EntryStatus {
+  RASCUNHO
+  CONFIRMADO
+  ESTORNADO
+}
+
+enum EntrySource {
+  MANUAL
+  FISCAL
+  FOLHA
+  FINANCEIRO
+  ESTORNO
+}
+
+enum DebitCredit {
+  DEBITO
+  CREDITO
+}
+
+model AccountingEntry {
+  id            String              @id @default(cuid())
+  clientId      String
+  entryNumber   Int
+  entryDate     DateTime
+  periodMonth   Int
+  periodYear    Int
+  description   String
+  entryTypeId   String?
+  status        EntryStatus         @default(RASCUNHO)
+  source        EntrySource         @default(MANUAL)
+  reversedById  String?
+  reversalOfId  String?
+  documentRef   String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  createdById   String?
+
+  client        Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdBy     User?               @relation("EntryCreatedBy", fields: [createdById], references: [id])
+  reversedBy    AccountingEntry?    @relation("EntryReversal", fields: [reversedById], references: [id])
+  reversalOf    AccountingEntry[]   @relation("EntryReversal")
+  lines         AccountingEntryLine[]
+
+  @@unique([clientId, entryNumber])
+  @@index([clientId, periodYear, periodMonth])
+  @@index([clientId, entryDate])
+}
+
+model AccountingEntryLine {
+  id            String          @id @default(cuid())
+  entryId       String
+  lineNumber    Int
+  accountId     String
+  costCenterId  String?
+  historyId     String?
+  complement    String?
+  debitCredit   DebitCredit
+  value         Decimal         @db.Decimal(14, 2)
+
+  entry         AccountingEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+  @@index([accountId])
+}
+
+// ── Encerramento de Exercício ─────────────────────────────────────────────────
+
+model PeriodClosing {
+  id          String              @id @default(cuid())
+  clientId    String
+  periodMonth Int
+  periodYear  Int
+  status      PeriodClosingStatus @default(ABERTO)
+  closedAt    DateTime?
+  closedById  String?
+  reopenedAt  DateTime?
+  reopenedById String?
+  reopenReason String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  client      Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, periodYear, periodMonth])
+  @@index([clientId, periodYear])
+}
+
+// ── LALUR / LACS ──────────────────────────────────────────────────────────────
+
+model LalurAdjustType {
+  id             String            @id @default(cuid())
+  clientId       String
+  code           String
+  description    String
+  nature         LalurAdjustNature
+  timing         LalurAdjustTiming @default(PERMANENTE)
+  accountCode    String?
+  ecfRefCode     String?
+  active         Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  client         Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  partAEntries   LalurPartAEntry[]
+  accountingRules LalurAccountingRule[]
+
+  @@unique([clientId, code])
+}
+
+model LalurPeriod {
+  id               String              @id @default(cuid())
+  clientId         String
+  periodYear       Int
+  taxRegime        TaxRegimeCalc       @default(LUCRO_REAL)
+  accountingProfit Decimal             @default(0) @db.Decimal(14, 2)
+  totalAdditions   Decimal             @default(0) @db.Decimal(14, 2)
+  totalExclusions  Decimal             @default(0) @db.Decimal(14, 2)
+  totalCompensations Decimal           @default(0) @db.Decimal(14, 2)
+  realProfit       Decimal             @default(0) @db.Decimal(14, 2)
+  status           IrpjCsllCalcStatus  @default(RASCUNHO)
+  notes            String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  lockedAt         DateTime?
+  lockedByUserId   String?
+
+  client           Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lockedBy         User?               @relation("LalurPeriodLockedBy", fields: [lockedByUserId], references: [id])
+  partAEntries     LalurPartAEntry[]
+  partBBalances    LalurPartBBalance[]
+  irpjCsllCalc     IrpjCsllCalc?
+  compensations    LalurCompensation[]
+  accountingImports LalurAccountingImport[]
+
+  @@unique([clientId, periodYear])
+}
+
+model LalurPartAEntry {
+  id              String            @id @default(cuid())
+  lalurPeriodId   String
+  adjustTypeId    String?
+  sequence        Int
+  description     String
+  nature          LalurAdjustNature
+  timing          LalurAdjustTiming @default(PERMANENTE)
+  value           Decimal           @db.Decimal(14, 2)
+  accountCode     String?
+  documentRef     String?
+  notes           String?
+  periodMonth     Int?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  lalurPeriod     LalurPeriod       @relation(fields: [lalurPeriodId], references: [id], onDelete: Cascade)
+  adjustType      LalurAdjustType?  @relation(fields: [adjustTypeId], references: [id])
+  partBEntries    LalurPartBBalance[]
+
+  @@index([lalurPeriodId])
+}
+
+model LalurPartBBalance {
+  id              String                  @id @default(cuid())
+  lalurPeriodId   String
+  partAEntryId    String?
+  description     String
+  type            LalurPartBType
+  controlType     LalurPartBControlType   @default(AJUSTE_TEMPORARIO)
+  originDate      DateTime?
+  originalValue   Decimal?                @db.Decimal(14, 2)
+  usedValue       Decimal                 @default(0) @db.Decimal(14, 2)
+  openingBalance  Decimal                 @default(0) @db.Decimal(14, 2)
+  additions       Decimal                 @default(0) @db.Decimal(14, 2)
+  realizations    Decimal                 @default(0) @db.Decimal(14, 2)
+  closingBalance  Decimal                 @default(0) @db.Decimal(14, 2)
+  notes           String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  lalurPeriod     LalurPeriod             @relation(fields: [lalurPeriodId], references: [id], onDelete: Cascade)
+  partAEntry      LalurPartAEntry?        @relation(fields: [partAEntryId], references: [id])
+  movements       LalurPartBMovement[]
+
+  @@index([lalurPeriodId])
+}
+
+model IrpjCsllCalc {
+  id                    String              @id @default(cuid())
+  lalurPeriodId         String              @unique
+  taxRegime             TaxRegimeCalc       @default(LUCRO_REAL)
+
+  // Base de cálculo
+  irpjBase              Decimal             @default(0) @db.Decimal(14, 2)
+  csllBase              Decimal             @default(0) @db.Decimal(14, 2)
+
+  // IRPJ
+  irpjRate              Decimal             @default(15) @db.Decimal(7, 4)
+  irpjValue             Decimal             @default(0) @db.Decimal(14, 2)
+  irpjSurchargeBase     Decimal             @default(0) @db.Decimal(14, 2)
+  irpjSurchargeRate     Decimal             @default(10) @db.Decimal(7, 4)
+  irpjSurchargeValue    Decimal             @default(0) @db.Decimal(14, 2)
+  irpjTotal             Decimal             @default(0) @db.Decimal(14, 2)
+
+  // CSLL
+  csllRate              Decimal             @default(9) @db.Decimal(7, 4)
+  csllValue             Decimal             @default(0) @db.Decimal(14, 2)
+
+  // Deduções / incentivos
+  irpjIncentives        Decimal             @default(0) @db.Decimal(14, 2)
+  csllIncentives        Decimal             @default(0) @db.Decimal(14, 2)
+
+  // Net
+  irpjNet               Decimal             @default(0) @db.Decimal(14, 2)
+  csllNet               Decimal             @default(0) @db.Decimal(14, 2)
+
+  // CSLL estimativa mensal acumulada
+  irpjMonthlyEstimate   Decimal             @default(0) @db.Decimal(14, 2)
+  csllMonthlyEstimate   Decimal             @default(0) @db.Decimal(14, 2)
+
+  status                IrpjCsllCalcStatus  @default(RASCUNHO)
+  calculatedAt          DateTime?
+  notes                 String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  lalurPeriod           LalurPeriod         @relation(fields: [lalurPeriodId], references: [id], onDelete: Cascade)
+}
+
+model EcfFile {
+  id            String      @id @default(cuid())
+  clientId      String
+  periodYear    Int
+  status        EcfStatus   @default(PENDENTE)
+  fileContent   String?     @db.Text
+  fileName      String?
+  errorMessage  String?
+  generatedAt   DateTime?
+  transmittedAt DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, periodYear])
+}
+
+model LalurPartBMovement {
+  id              String              @id @default(cuid())
+  partBBalanceId  String
+  type            LalurPartBMovType
+  value           Decimal             @db.Decimal(14, 2)
+  description     String
+  documentRef     String?
+  movementDate    DateTime
+  createdByUserId String?
+  createdAt       DateTime            @default(now())
+
+  partBBalance    LalurPartBBalance   @relation(fields: [partBBalanceId], references: [id], onDelete: Cascade)
+  createdBy       User?               @relation("LalurPartBMovCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([partBBalanceId])
+}
+
+model LalurCompensation {
+  id                  String    @id @default(cuid())
+  clientId            String
+  lalurPeriodId       String
+  originYear          Int
+  type                String
+  originalValue       Decimal   @db.Decimal(14, 2)
+  availableValue      Decimal   @db.Decimal(14, 2)
+  usedValue           Decimal   @default(0) @db.Decimal(14, 2)
+  remainingValue      Decimal   @db.Decimal(14, 2)
+  usedInYear          Int?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  client              Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lalurPeriod         LalurPeriod @relation(fields: [lalurPeriodId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, type, originYear])
+}
+
+model LalurAccountingRule {
+  id            String    @id @default(cuid())
+  clientId      String
+  accountCode   String
+  adjustTypeId  String?
+  nature        LalurAdjustNature
+  description   String
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  client        Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  adjustType    LalurAdjustType? @relation(fields: [adjustTypeId], references: [id])
+
+  @@unique([clientId, accountCode])
+}
+
+model LalurAccountingImport {
+  id              String    @id @default(cuid())
+  clientId        String
+  lalurPeriodId   String
+  importedAt      DateTime  @default(now())
+  accountingProfit Decimal  @db.Decimal(14, 2)
+  adjustmentsCount Int      @default(0)
+  notes           String?
+  importedByUserId String?
+
+  client          Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  lalurPeriod     LalurPeriod @relation(fields: [lalurPeriodId], references: [id], onDelete: Cascade)
+  importedBy      User?       @relation("LalurImportedBy", fields: [importedByUserId], references: [id])
+
+  @@index([lalurPeriodId])
+}
+
+model LalurAuditLog {
+  id            String            @id @default(cuid())
+  clientId      String
+  lalurPeriodId String?
+  entity        String
+  entityId      String?
+  action        LalurAuditAction
+  before        String?           @db.Text
+  after         String?           @db.Text
+  userId        String?
+  createdAt     DateTime          @default(now())
+
+  client        Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  user          User?   @relation("LalurAuditLogUser", fields: [userId], references: [id])
+
+  @@index([clientId, lalurPeriodId])
+}
+
+// ── Módulo Patrimônio ─────────────────────────────────────────────────────────
+
+model PatrimonyGroup {
+  id                    String               @id @default(cuid())
+  clientId              String
+  code                  String
+  name                  String
+  parentId              String?
+  deprecMethod          PatrimonyDeprecMethod @default(LINEAR)
+  usefulLifeYears       Int                  @default(5)
+  annualRate            Decimal              @default(20) @db.Decimal(7, 4)
+  residualValuePct      Decimal              @default(0)  @db.Decimal(7, 4)
+  assetAccountCode      String?
+  accumDeprecAccountCode String?
+  deprecExpenseAccountCode String?
+  active                Boolean              @default(true)
+  notes                 String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  client                Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  parent                PatrimonyGroup?      @relation("GroupParent", fields: [parentId], references: [id])
+  children              PatrimonyGroup[]     @relation("GroupParent")
+  assets                PatrimonyAsset[]
+
+  @@unique([clientId, code])
+}
+
+model PatrimonyLocation {
+  id        String   @id @default(cuid())
+  clientId  String
+  code      String
+  name      String
+  type      String?
+  parentId  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client    Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  parent    PatrimonyLocation? @relation("LocationParent", fields: [parentId], references: [id])
+  children  PatrimonyLocation[] @relation("LocationParent")
+  assets    PatrimonyAsset[]
+
+  @@unique([clientId, code])
+}
+
+model PatrimonyResponsible {
+  id        String   @id @default(cuid())
+  clientId  String
+  name      String
+  role      String?
+  sector    String?
+  email     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client    Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  assets    PatrimonyAsset[]
+}
+
+model PatrimonyAsset {
+  id                   String                  @id @default(cuid())
+  clientId             String
+  tombamento           String
+  internalCode         String?
+  description          String
+  serialNumber         String?
+  brand                String?
+  model                String?
+  manufacturer         String?
+  barcode              String?
+
+  groupId              String?
+  locationId           String?
+  responsibleId        String?
+  costCenterCode       String?
+
+  acquisitionType      PatrimonyAcquisitionType @default(COMPRA)
+  acquisitionDate      DateTime
+  acquisitionValue     Decimal                  @db.Decimal(14, 2)
+  residualValue        Decimal                  @default(0) @db.Decimal(14, 2)
+  usefulLifeMonths     Int                      @default(60)
+  usefulLifeMonthsFiscal Int                    @default(60)
+  deprecMethod         PatrimonyDeprecMethod    @default(LINEAR)
+  deprecStartDate      DateTime?
+  deprecSuspended      Boolean                  @default(false)
+
+  documentOrigin       String?
+
+  status               PatrimonyAssetStatus     @default(ATIVO)
+
+  assetAccountCode     String?
+  accumDeprecAccountCode String?
+  deprecExpenseAccountCode String?
+
+  technicalNotes       String?
+  oldTombamento        String?
+
+  active               Boolean                  @default(true)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+
+  client               Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  group                PatrimonyGroup?           @relation(fields: [groupId], references: [id])
+  location             PatrimonyLocation?        @relation(fields: [locationId], references: [id])
+  responsible          PatrimonyResponsible?     @relation(fields: [responsibleId], references: [id])
+  depreciations        PatrimonyDepreciation[]
+  movements            PatrimonyMovement[]
+  revaluations         PatrimonyRevaluation[]
+  disposals            PatrimonyDisposal[]
+  inventoryItems       PatrimonyInventoryItem[]
+
+  @@unique([clientId, tombamento])
+  @@index([clientId, groupId])
+  @@index([clientId, status])
+}
+
+model PatrimonyDepreciation {
+  id               String         @id @default(cuid())
+  assetId          String
+  periodMonth      Int
+  periodYear       Int
+  openingValue     Decimal        @db.Decimal(14, 2)
+  accumDeprecOpen  Decimal        @default(0) @db.Decimal(14, 2)
+  monthlyDeprec    Decimal        @default(0) @db.Decimal(14, 2)
+  accumDeprecClose Decimal        @default(0) @db.Decimal(14, 2)
+  closingValue     Decimal        @db.Decimal(14, 2)
+  fiscalDeprec     Decimal        @default(0) @db.Decimal(14, 2)
+  entryRef         String?
+  createdAt        DateTime       @default(now())
+
+  asset            PatrimonyAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, periodYear, periodMonth])
+  @@index([assetId])
+}
+
+model PatrimonyMovement {
+  id                String                @id @default(cuid())
+  assetId           String
+  type              PatrimonyMovementType
+  movementDate      DateTime
+  fromLocationId    String?
+  toLocationId      String?
+  fromResponsibleId String?
+  toResponsibleId   String?
+  fromStatus        PatrimonyAssetStatus?
+  toStatus          PatrimonyAssetStatus?
+  reason            String?
+  document          String?
+  notes             String?
+  createdAt         DateTime              @default(now())
+
+  asset             PatrimonyAsset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+}
+
+model PatrimonyRevaluation {
+  id              String                   @id @default(cuid())
+  assetId         String
+  type            PatrimonyRevaluationType @default(REAVALIACAO)
+  revaluationDate DateTime
+  previousValue   Decimal                  @db.Decimal(14, 2)
+  newValue        Decimal                  @db.Decimal(14, 2)
+  adjustment      Decimal                  @db.Decimal(14, 2)
+  expertReport    String?
+  accountCode     String?
+  entryRef        String?
+  notes           String?
+  createdAt       DateTime                 @default(now())
+
+  asset           PatrimonyAsset           @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+}
+
+model PatrimonyDisposal {
+  id               String                @id @default(cuid())
+  assetId          String
+  type             PatrimonyDisposalType @default(SUCATEAMENTO)
+  disposalDate     DateTime
+  bookValue        Decimal               @db.Decimal(14, 2)
+  saleValue        Decimal               @default(0) @db.Decimal(14, 2)
+  gainLoss         Decimal               @default(0) @db.Decimal(14, 2)
+  finalDeprec      Decimal               @default(0) @db.Decimal(14, 2)
+  documentRef      String?
+  entryRef         String?
+  notes            String?
+  createdAt        DateTime              @default(now())
+
+  asset            PatrimonyAsset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+}
+
+model PatrimonyInventory {
+  id          String                    @id @default(cuid())
+  clientId    String
+  name        String
+  startDate   DateTime
+  endDate     DateTime?
+  status      PatrimonyInventoryStatus  @default(ABERTO)
+  notes       String?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  client      Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items       PatrimonyInventoryItem[]
+
+  @@index([clientId])
+}
+
+model PatrimonyInventoryItem {
+  id            String             @id @default(cuid())
+  inventoryId   String
+  assetId       String
+  found         Boolean?
+  foundLocation String?
+  foundCondition String?
+  notes         String?
+  checkedAt     DateTime?
+
+  inventory     PatrimonyInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  asset         PatrimonyAsset     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([inventoryId, assetId])
 }

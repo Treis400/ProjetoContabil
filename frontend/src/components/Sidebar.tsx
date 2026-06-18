@@ -3,14 +3,43 @@ import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-const links = [
+const mainLinks = [
   { to: '/', label: 'Dashboard' },
   { to: '/clientes', label: 'Clientes' },
   { to: '/processos', label: 'Processos' },
   { to: '/kanban', label: 'Kanban' },
   { to: '/documentos', label: 'Documentos' },
-  { to: '/tributario', label: 'Tributario Anual' },
+  { to: '/tributario', label: 'Tributário Anual' },
   { to: '/alertas', label: 'Alertas' },
+];
+
+const accountingLinks = [
+  { to: '/contabil/lancamentos', label: 'Diário / Lançamentos' },
+  { to: '/contabil/razao',       label: 'Razão Analítico' },
+  { to: '/contabil/balancete',   label: 'Balancete' },
+  { to: '/contabil/plano-contas', label: 'Plano de Contas' },
+  { to: '/contabil/cadastros',    label: 'Cadastros Contábeis' },
+  { to: '/contabil/parametros',   label: 'Parâmetros Contábeis' },
+];
+
+const fiscalLinks = [
+  { to: '/fiscal/documentos', label: 'Escrituração' },
+  { to: '/fiscal/apuracoes', label: 'Apuração de Tributos' },
+  { to: '/fiscal/obrigacoes', label: 'Obrigações e Livros' },
+  { to: '/fiscal/produtos', label: 'Produtos Fiscais' },
+  { to: '/fiscal/servicos', label: 'Serviços Fiscais' },
+  { to: '/fiscal/tabelas', label: 'Tabelas Auxiliares' },
+];
+
+const lalurLinks = [
+  { to: '/lalur', label: 'LALUR / LACS' },
+];
+
+const patrimonyLinks = [
+  { to: '/patrimonio/bens', label: 'Bens Patrimoniais' },
+  { to: '/patrimonio/depreciacao', label: 'Depreciação' },
+  { to: '/patrimonio/inventario', label: 'Inventário' },
+  { to: '/patrimonio/cadastros', label: 'Cadastros' },
 ];
 
 export function Sidebar() {
@@ -30,20 +59,21 @@ export function Sidebar() {
       <aside
         className={`fixed inset-y-0 left-0 z-30 w-72 transform border-r border-slate-200 bg-slate-950 px-6 py-8 text-slate-100 transition ${
           open ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
+        } lg:translate-x-0 overflow-y-auto`}
       >
         <Link to="/" className="mb-10 block">
           <p className="text-sm font-medium uppercase tracking-[0.3em] text-slate-400">
-            Escritorio
+            Escritório
           </p>
-          <h1 className="mt-2 text-2xl font-semibold">Gestao Contabil</h1>
+          <h1 className="mt-2 text-2xl font-semibold">Gestão Contábil</h1>
         </Link>
 
         <nav className="space-y-2">
-          {links.map((link) => (
+          {mainLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
+              end={link.to === '/'}
               onClick={() => setOpen(false)}
               className={({ isActive }) =>
                 `block rounded-xl px-4 py-3 text-sm font-medium transition ${
@@ -55,6 +85,78 @@ export function Sidebar() {
             </NavLink>
           ))}
         </nav>
+
+        <div className="mt-6">
+          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Módulo Contábil
+          </p>
+          <nav className="space-y-1">
+            {accountingLinks.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${
+                    isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Módulo Fiscal
+          </p>
+          <nav className="space-y-1">
+            {fiscalLinks.map((link) => (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${
+                    isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                  }`
+                }
+              >
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            LALUR / ECF
+          </p>
+          <nav className="space-y-1">
+            {lalurLinks.map((link) => (
+              <NavLink key={link.to} to={link.to} onClick={() => setOpen(false)}
+                className={({ isActive }) => `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}>
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            Patrimônio
+          </p>
+          <nav className="space-y-1">
+            {patrimonyLinks.map((link) => (
+              <NavLink key={link.to} to={link.to} onClick={() => setOpen(false)}
+                className={({ isActive }) => `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}>
+                {link.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
 
         <div className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-4">
           <p className="text-sm font-semibold">{user?.name}</p>

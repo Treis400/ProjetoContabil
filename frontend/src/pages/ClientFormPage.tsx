@@ -1,5 +1,7 @@
+import { isAxiosError } from 'axios';
+import { CheckCircle2, X } from 'lucide-react';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FormField } from '../components/FormField';
 import { PageHeader } from '../components/PageHeader';
 import { createClient, fetchClient, updateClient } from '../services/clientService';
@@ -21,6 +23,11 @@ const serviceOptions = [
 
 const inputClass =
   'w-full rounded-2xl border border-slate-200 px-4 py-3 outline-none transition focus:border-sky-400';
+
+type ClientRequiredField =
+  | 'companyName'
+  | 'cnpj'
+  | 'monthlyFee.startDate';
 
 function getInitialState(): ClientPayload {
   return {
@@ -57,12 +64,56 @@ function getInitialState(): ClientPayload {
   };
 }
 
+function formatCurrencyInput(value: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function parseCurrencyInput(value: string) {
+  const digitsOnly = value.replace(/\D/g, '');
+
+  if (!digitsOnly) {
+    return {
+      amount: 0,
+      displayValue: '',
+    };
+  }
+
+  const amount = Number(digitsOnly) / 100;
+
+  return {
+    amount,
+    displayValue: formatCurrencyInput(amount),
+  };
+}
+
 export function ClientFormPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const isEditing = useMemo(() => Boolean(id), [id]);
   const [form, setForm] = useState<ClientPayload>(getInitialState);
+  const [monthlyFeeAmountInput, setMonthlyFeeAmountInput] = useState(() =>
+    formatCurrencyInput(getInitialState().monthlyFee.amount),
+  );
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [requiredFieldErrors, setRequiredFieldErrors] = useState<
+    Partial<Record<ClientRequiredField, boolean>>
+  >({});
+  const [showSuccessAlert, setShowSuccessAlert] = useState(
+    Boolean((location.state as { showClientCreatedAlert?: boolean } | null)?.showClientCreatedAlert),
+  );
+
+  useEffect(() => {
+    const shouldShowAlert = Boolean(
+      (location.state as { showClientCreatedAlert?: boolean } | null)?.showClientCreatedAlert,
+    );
+
+    setShowSuccessAlert(shouldShowAlert);
+  }, [location.state]);
 
   useEffect(() => {
     if (!id) {
@@ -113,6 +164,9 @@ export function ClientFormPage() {
               | 'ENCERRADO') ?? 'ATIVO',
         },
       });
+      setMonthlyFeeAmountInput(
+        formatCurrencyInput(Number(client.monthlyFees?.find((item) => item.isCurrent)?.amount ?? 0)),
+      );
     });
   }, [id]);
 
@@ -124,10 +178,72 @@ export function ClientFormPage() {
       ...current,
       [name]: value,
     }));
+    clearRequiredFieldError(name as ClientRequiredField);
+  }
+
+  function clearRequiredFieldError(field: ClientRequiredField) {
+    setRequiredFieldErrors((current) => {
+      if (!current[field]) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [field]: false,
+      };
+    });
+  }
+
+  function validateRequiredFields() {
+    const nextErrors: Partial<Record<ClientRequiredField, boolean>> = {
+      companyName: !form.companyName.trim(),
+      cnpj: !form.cnpj.trim(),
+      'monthlyFee.startDate': !form.monthlyFee.startDate.trim(),
+    };
+
+    setRequiredFieldErrors(nextErrors);
+
+    return !Object.values(nextErrors).some(Boolean);
+  }
+
+  function getInputClassName(field: ClientRequiredField) {
+    if (!requiredFieldErrors[field]) {
+      return inputClass;
+    }
+
+    return `${inputClass} !border-2 !border-rose-500 pr-4 text-rose-600 placeholder:text-rose-500 placeholder:italic focus:!border-rose-600 focus:ring-1 focus:ring-rose-200`;
+  }
+
+  function getRequiredPlaceholder(field: ClientRequiredField, fallback = '') {
+    return requiredFieldErrors[field] ? 'Campo obrigatorio' : fallback;
+  }
+
+  function handleMonthlyFeeStartDateChange(value: string) {
+    setForm((current) => ({
+      ...current,
+      monthlyFee: { ...current.monthlyFee, startDate: value },
+    }));
+    clearRequiredFieldError('monthlyFee.startDate');
+  }
+
+  function handleMonthlyFeeAmountChange(value: string) {
+    const { amount, displayValue } = parseCurrencyInput(value);
+
+    setMonthlyFeeAmountInput(displayValue);
+    setForm((current) => ({
+      ...current,
+      monthlyFee: { ...current.monthlyFee, amount },
+    }));
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError('');
+
+    if (!validateRequiredFields()) {
+      return;
+    }
+
     setLoading(true);
 
     const payload = {
@@ -144,11 +260,24 @@ export function ClientFormPage() {
     try {
       if (id) {
         await updateClient(id, payload);
+        navigate('/clientes', {
+          state: { successMessage: 'Cliente atualizado com sucesso' },
+        });
       } else {
-        await createClient(payload);
+        const createdClient = await createClient(payload);
+        navigate(`/clientes/${createdClient.id}/editar`, {
+          state: { showClientCreatedAlert: true },
+        });
       }
-
-      navigate('/clientes');
+    } catch (error) {
+      if (isAxiosError<{ message?: string }>(error)) {
+        setSubmitError(
+          error.response?.data?.message ??
+            'Nao foi possivel salvar o cliente. Verifique se o backend esta rodando e tente novamente.',
+        );
+      } else {
+        setSubmitError('Nao foi possivel salvar o cliente. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -166,6 +295,24 @@ export function ClientFormPage() {
     });
   }
 
+  function closeSuccessAlert() {
+    setShowSuccessAlert(false);
+    navigate(location.pathname, { replace: true, state: null });
+  }
+
+  function handleCreateAnotherClient() {
+    setShowSuccessAlert(false);
+    navigate('/clientes/novo');
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  function handleBackToList() {
+    setShowSuccessAlert(false);
+    navigate('/clientes');
+  }
+
   return (
     <div>
       <PageHeader
@@ -173,18 +320,90 @@ export function ClientFormPage() {
         description="Formulario completo com dados empresariais, tributarios, servicos e mensalidade."
       />
 
+      {showSuccessAlert ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-[2rem] border border-sky-200 bg-white p-6 shadow-2xl shadow-sky-200/40">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <span className="mt-0.5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-100 text-sky-600">
+                  <CheckCircle2 size={22} />
+                </span>
+                <div>
+                  <h3 className="text-xl font-semibold text-sky-950">Cliente cadastrado com sucesso</h3>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Escolha o proximo passo para continuar o fluxo de cadastro.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCreateAnotherClient}
+                      className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-600"
+                    >
+                      Fazer um novo cadastro
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBackToList}
+                      className="rounded-2xl border border-sky-200 bg-white px-5 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-50"
+                    >
+                      Voltar para a lista
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={closeSuccessAlert}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition hover:bg-sky-100 hover:text-sky-700"
+                aria-label="Fechar alerta de sucesso"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {submitError ? (
+        <div className="mb-6 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700 shadow-sm">
+          {submitError}
+        </div>
+      ) : null}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Dados da empresa</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <FormField label="Razao Social">
-              <input name="companyName" className={inputClass} value={form.companyName} onChange={handleChange} />
+            <FormField
+              label="Razao Social"
+              required
+              tooltip="Campo obrigatorio para identificar juridicamente a empresa."
+              description="Informe o nome registrado no contrato social e no CNPJ."
+            >
+              <input
+                name="companyName"
+                className={getInputClassName('companyName')}
+                value={form.companyName}
+                onChange={handleChange}
+                placeholder={getRequiredPlaceholder('companyName')}
+              />
             </FormField>
             <FormField label="Nome Fantasia">
               <input name="tradeName" className={inputClass} value={form.tradeName ?? ''} onChange={handleChange} />
             </FormField>
-            <FormField label="CNPJ">
-              <input name="cnpj" className={inputClass} value={form.cnpj} onChange={handleChange} />
+            <FormField
+              label="CNPJ"
+              required
+              tooltip="Campo obrigatorio para localizar a empresa nos cadastros fiscais."
+              description="Digite o CNPJ completo da empresa com 14 digitos."
+            >
+              <input
+                name="cnpj"
+                className={getInputClassName('cnpj')}
+                value={form.cnpj}
+                onChange={handleChange}
+                placeholder={getRequiredPlaceholder('cnpj')}
+              />
             </FormField>
             <FormField label="Inscricao Estadual">
               <input name="stateRegistration" className={inputClass} value={form.stateRegistration ?? ''} onChange={handleChange} />
@@ -201,7 +420,12 @@ export function ClientFormPage() {
             <FormField label="Data de Abertura">
               <input type="date" name="openingDate" className={inputClass} value={form.openingDate ?? ''} onChange={handleChange} />
             </FormField>
-            <FormField label="Situacao da Empresa">
+            <FormField
+              label="Situacao da Empresa"
+              required
+              tooltip="Campo obrigatorio para indicar o estado atual da empresa no sistema."
+              description="Selecione se a empresa esta ativa, suspensa, inativa ou encerrada."
+            >
               <select name="companyStatus" className={inputClass} value={form.companyStatus} onChange={handleChange}>
                 <option value="ATIVA">Ativa</option>
                 <option value="SUSPENSA">Suspensa</option>
@@ -239,7 +463,12 @@ export function ClientFormPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Dados tributarios</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <FormField label="Tipo de Empresa">
+            <FormField
+              label="Tipo de Empresa"
+              required
+              tooltip="Campo obrigatorio para classificar o enquadramento principal da empresa."
+              description="Escolha o porte ou regime estrutural mais aderente ao cliente."
+            >
               <select
                 className={inputClass}
                 value={form.taxProfile.companyType}
@@ -305,7 +534,11 @@ export function ClientFormPage() {
                 }
               />
             </FormField>
-            <FormField label="Situacao Tributaria">
+            <FormField
+              label="Situacao Tributaria"
+              tooltip="Ajuda a registrar o enquadramento tributario atual da empresa."
+              description="Use este campo para informar como a empresa esta enquadrada hoje."
+            >
               <select
                 className={inputClass}
                 value={form.taxProfile.currentTaxSituation ?? 'SIMPLES_NACIONAL_ATIVO'}
@@ -352,34 +585,52 @@ export function ClientFormPage() {
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900">Mensalidade e observacoes</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <FormField label="Valor da mensalidade">
-              <input
-                type="number"
-                step="0.01"
-                className={inputClass}
-                value={form.monthlyFee.amount}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    monthlyFee: { ...current.monthlyFee, amount: Number(event.target.value) },
-                  }))
-                }
-              />
+            <FormField
+              label="Valor da mensalidade"
+              required
+              tooltip="Campo obrigatorio para registrar o valor corrente do contrato mensal."
+              description="Informe o valor mensal atualmente cobrado do cliente."
+            >
+              <div className="relative">
+                <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-medium text-slate-500">
+                  R$
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  className={`${inputClass} pl-12`}
+                  value={monthlyFeeAmountInput}
+                  onChange={(event) => handleMonthlyFeeAmountChange(event.target.value)}
+                  placeholder="0,00"
+                />
+              </div>
             </FormField>
-            <FormField label="Inicio do contrato">
-              <input
-                type="date"
-                className={inputClass}
-                value={form.monthlyFee.startDate}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    monthlyFee: { ...current.monthlyFee, startDate: event.target.value },
-                  }))
-                }
-              />
+            <FormField
+              label="Inicio do contrato"
+              required
+              tooltip="Campo obrigatorio para definir quando a mensalidade passou a valer."
+              description="Selecione a data inicial de vigencia do contrato mensal."
+            >
+              <div className="relative">
+                <input
+                  type="date"
+                  className={getInputClassName('monthlyFee.startDate')}
+                  value={form.monthlyFee.startDate}
+                  onChange={(event) => handleMonthlyFeeStartDateChange(event.target.value)}
+                />
+                {requiredFieldErrors['monthlyFee.startDate'] && !form.monthlyFee.startDate ? (
+                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm italic text-rose-500">
+                    Campo obrigatorio
+                  </span>
+                ) : null}
+              </div>
             </FormField>
-            <FormField label="Status do contrato">
+            <FormField
+              label="Status do contrato"
+              required
+              tooltip="Campo obrigatorio para indicar a situacao atual da mensalidade."
+              description="Escolha se o contrato esta ativo, suspenso ou encerrado."
+            >
               <select
                 className={inputClass}
                 value={form.monthlyFee.status}

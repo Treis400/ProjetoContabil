@@ -1,3 +1,13 @@
+import {
+  AlertTriangle,
+  BriefcaseBusiness,
+  Building2,
+  CalendarClock,
+  CheckCircle2,
+  Clock3,
+  FileSpreadsheet,
+  PlayCircle,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { StatCard } from '../components/StatCard';
@@ -19,25 +29,41 @@ export function DashboardPage() {
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Processos em andamento" value={summary?.cards.processosEmAndamento ?? 0} />
+        <StatCard
+          title="Processos em andamento"
+          value={summary?.cards.processosEmAndamento ?? 0}
+          icon={PlayCircle}
+        />
         <StatCard
           title="Parados com cliente"
           value={summary?.cards.processosParadosCliente ?? 0}
+          icon={Clock3}
         />
-        <StatCard title="Concluidos" value={summary?.cards.processosConcluidos ?? 0} />
-        <StatCard title="Atrasados" value={summary?.cards.processosAtrasados ?? 0} />
+        <StatCard
+          title="Concluidos"
+          value={summary?.cards.processosConcluidos ?? 0}
+          icon={CheckCircle2}
+        />
+        <StatCard
+          title="Atrasados"
+          value={summary?.cards.processosAtrasados ?? 0}
+          icon={AlertTriangle}
+        />
         <StatCard
           title="Proximos do vencimento"
           value={summary?.cards.processosProximosVencimento ?? 0}
+          icon={CalendarClock}
         />
         <StatCard
           title="Empresas Simples Nacional"
           value={summary?.cards.empresasSimplesNacional ?? 0}
+          icon={Building2}
         />
-        <StatCard title="Empresas MEI" value={summary?.cards.empresasMei ?? 0} />
+        <StatCard title="Empresas MEI" value={summary?.cards.empresasMei ?? 0} icon={BriefcaseBusiness} />
         <StatCard
           title="Revisoes pendentes"
           value={summary?.cards.revisoesTributariasPendentes ?? 0}
+          icon={FileSpreadsheet}
         />
       </div>
 

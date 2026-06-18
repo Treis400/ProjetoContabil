@@ -1,5 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FormField } from '../components/FormField';
 import { useAuth } from '../hooks/useAuth';
 
 export function LoginPage() {
@@ -37,24 +38,34 @@ export function LoginPage() {
         </div>
 
         <form className="space-y-5" onSubmit={handleSubmit}>
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-300">E-mail</label>
+          <FormField
+            label="E-mail"
+            required
+            tone="dark"
+            tooltip="Campo obrigatorio para identificar o usuario no sistema."
+            description="Informe o e-mail cadastrado para acessar o ambiente interno."
+          >
             <input
               className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-400"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
-          </div>
+          </FormField>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-300">Senha</label>
+          <FormField
+            label="Senha"
+            required
+            tone="dark"
+            tooltip="Campo obrigatorio para validar a autenticacao do usuario."
+            description="Digite a senha vinculada ao seu usuario para entrar no sistema."
+          >
             <input
               type="password"
               className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-sky-400"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
-          </div>
+          </FormField>
 
           {error ? (
             <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
