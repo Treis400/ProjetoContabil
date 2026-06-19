@@ -1,6 +1,6 @@
-import { Menu, X } from 'lucide-react';
+import { ChevronRight, Menu, X } from 'lucide-react';
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 const mainLinks = [
@@ -13,34 +13,109 @@ const mainLinks = [
   { to: '/alertas', label: 'Alertas' },
 ];
 
-const accountingLinks = [
-  { to: '/contabil/lancamentos', label: 'Diário / Lançamentos' },
-  { to: '/contabil/razao',       label: 'Razão Analítico' },
-  { to: '/contabil/balancete',   label: 'Balancete' },
-  { to: '/contabil/plano-contas', label: 'Plano de Contas' },
-  { to: '/contabil/cadastros',    label: 'Cadastros Contábeis' },
-  { to: '/contabil/parametros',   label: 'Parâmetros Contábeis' },
+const modules = [
+  {
+    key: 'contabil',
+    label: 'Módulo Contábil',
+    prefixes: ['/contabil'],
+    links: [
+      { to: '/contabil/lancamentos', label: 'Diário / Lançamentos' },
+      { to: '/contabil/razao',       label: 'Razão Analítico' },
+      { to: '/contabil/balancete',   label: 'Balancete' },
+      { to: '/contabil/plano-contas', label: 'Plano de Contas' },
+      { to: '/contabil/cadastros',    label: 'Cadastros Contábeis' },
+      { to: '/contabil/parametros',   label: 'Parâmetros Contábeis' },
+    ],
+  },
+  {
+    key: 'fiscal',
+    label: 'Módulo Fiscal',
+    prefixes: ['/fiscal'],
+    links: [
+      { to: '/fiscal/documentos', label: 'Escrituração' },
+      { to: '/fiscal/apuracoes',  label: 'Apuração de Tributos' },
+      { to: '/fiscal/obrigacoes', label: 'Obrigações e Livros' },
+      { to: '/fiscal/produtos',   label: 'Produtos Fiscais' },
+      { to: '/fiscal/servicos',   label: 'Serviços Fiscais' },
+      { to: '/fiscal/tabelas',    label: 'Tabelas Auxiliares' },
+    ],
+  },
+  {
+    key: 'lalur',
+    label: 'LALUR / ECF',
+    prefixes: ['/lalur'],
+    links: [
+      { to: '/lalur', label: 'LALUR / LACS' },
+    ],
+  },
+  {
+    key: 'patrimonio',
+    label: 'Patrimônio',
+    prefixes: ['/patrimonio'],
+    links: [
+      { to: '/patrimonio/bens',        label: 'Bens Patrimoniais' },
+      { to: '/patrimonio/depreciacao', label: 'Depreciação' },
+      { to: '/patrimonio/inventario',  label: 'Inventário' },
+      { to: '/patrimonio/cadastros',   label: 'Cadastros' },
+    ],
+  },
 ];
 
-const fiscalLinks = [
-  { to: '/fiscal/documentos', label: 'Escrituração' },
-  { to: '/fiscal/apuracoes', label: 'Apuração de Tributos' },
-  { to: '/fiscal/obrigacoes', label: 'Obrigações e Livros' },
-  { to: '/fiscal/produtos', label: 'Produtos Fiscais' },
-  { to: '/fiscal/servicos', label: 'Serviços Fiscais' },
-  { to: '/fiscal/tabelas', label: 'Tabelas Auxiliares' },
-];
+function ModuleSection({
+  mod,
+  onNavigate,
+}: {
+  mod: (typeof modules)[number];
+  onNavigate: () => void;
+}) {
+  const location = useLocation();
+  const isActive = mod.prefixes.some((p) => location.pathname.startsWith(p));
+  const [open, setOpen] = useState(false);
 
-const lalurLinks = [
-  { to: '/lalur', label: 'LALUR / LACS' },
-];
+  return (
+    <div className="mt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 transition ${
+          isActive
+            ? 'bg-slate-800 text-sky-400'
+            : 'text-slate-500 hover:bg-slate-900 hover:text-slate-300'
+        }`}
+      >
+        <span className="text-xs font-semibold uppercase tracking-[0.2em]">
+          {mod.label}
+        </span>
+        <ChevronRight
+          size={14}
+          className={`shrink-0 transition-transform duration-200 ${open ? 'rotate-90' : ''}`}
+        />
+      </button>
 
-const patrimonyLinks = [
-  { to: '/patrimonio/bens', label: 'Bens Patrimoniais' },
-  { to: '/patrimonio/depreciacao', label: 'Depreciação' },
-  { to: '/patrimonio/inventario', label: 'Inventário' },
-  { to: '/patrimonio/cadastros', label: 'Cadastros' },
-];
+      {open && (
+        <nav className="mt-1 space-y-1">
+          {mod.links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.to === '/lalur'}
+              onClick={onNavigate}
+              className={({ isActive: active }) =>
+                `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${
+                  active
+                    ? 'bg-sky-500 text-white'
+                    : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                }`
+              }
+            >
+              {link.label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
+    </div>
+  );
+}
 
 export function Sidebar() {
   const [open, setOpen] = useState(false);
@@ -86,77 +161,13 @@ export function Sidebar() {
           ))}
         </nav>
 
-        <div className="mt-6">
-          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Módulo Contábil
-          </p>
-          <nav className="space-y-1">
-            {accountingLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${
-                    isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-
-        <div className="mt-4">
-          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Módulo Fiscal
-          </p>
-          <nav className="space-y-1">
-            {fiscalLinks.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${
-                    isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                  }`
-                }
-              >
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-
-        <div className="mt-4">
-          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            LALUR / ECF
-          </p>
-          <nav className="space-y-1">
-            {lalurLinks.map((link) => (
-              <NavLink key={link.to} to={link.to} onClick={() => setOpen(false)}
-                className={({ isActive }) => `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}>
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
-
-        <div className="mt-4">
-          <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-            Patrimônio
-          </p>
-          <nav className="space-y-1">
-            {patrimonyLinks.map((link) => (
-              <NavLink key={link.to} to={link.to} onClick={() => setOpen(false)}
-                className={({ isActive }) => `block rounded-xl px-4 py-2.5 text-sm font-medium transition ${isActive ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'}`}>
-                {link.label}
-              </NavLink>
-            ))}
-          </nav>
-        </div>
+        {modules.map((mod) => (
+          <ModuleSection
+            key={mod.key}
+            mod={mod}
+            onNavigate={() => setOpen(false)}
+          />
+        ))}
 
         <div className="mt-10 rounded-2xl border border-slate-800 bg-slate-900 p-4">
           <p className="text-sm font-semibold">{user?.name}</p>

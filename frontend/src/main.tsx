@@ -1,8 +1,13 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './hooks/useAuth';
 import { AppRouter } from './routes/AppRouter';
 import './style.css';
+
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
+});
 
 const container = document.getElementById('root');
 
@@ -12,8 +17,10 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <AuthProvider>
-      <AppRouter />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </QueryClientProvider>
   </StrictMode>,
 );
