@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3333/api';
+
 export const api = axios.create({
-  baseURL: 'http://localhost:3333/api',
+  baseURL: BASE_URL,
+  timeout: 30000,
 });
 
 api.interceptors.request.use((config) => {
@@ -13,3 +16,17 @@ api.interceptors.request.use((config) => {
 
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('gestao-contabil:token');
+      localStorage.removeItem('gestao-contabil:user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  },
+);

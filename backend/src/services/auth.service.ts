@@ -1,12 +1,13 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuditAction } from '@prisma/client';
+import { Request } from 'express';
 import { prisma } from '../prisma/client.js';
 import { AppError } from '../utils/app-error.js';
 import { env } from '../utils/env.js';
 import { createAuditLog } from './audit.service.js';
 
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string, request?: Request) {
   const user = await prisma.user.findUnique({
     where: { email },
   });
@@ -37,6 +38,7 @@ export async function login(email: string, password: string) {
     entity: 'User',
     entityId: user.id,
     summary: 'Login realizado com sucesso.',
+    request,
   });
 
   return {

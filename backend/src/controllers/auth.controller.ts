@@ -6,7 +6,7 @@ import { getRequiredString } from '../utils/request.js';
 
 export async function login(request: Request, response: Response) {
   const data = loginSchema.parse(request.body);
-  const result = await authService.login(data.email, data.password);
+  const result = await authService.login(data.email, data.password, request);
   return response.json(result);
 }
 
